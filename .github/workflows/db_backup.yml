@@ -1,0 +1,59 @@
+name: 数据库自动备份（Artifacts）
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install sshpass & curl
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sshpass curl
+
+      - name: Backup Database on Remote Server
+        run: |
+          sshpass -p "${{ secrets.SERVER_PASSWORD }}" ssh -o StrictHostKeyChecking=no \
+          ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            set -e
+            mysqldump \
+              -u${{ secrets.DATABASE_USERNAME }} \
+              -p'${{ secrets.DATABASE_PASSWORD }}' \
+              --single-transaction \
+              --routines \
+              --triggers \
+              s1 > ~/backup.sql
+            gzip -f ~/backup.sql
+          EOF
+
+      - name: Download Backup File
+        run: |
+          sshpass -p "${{ secrets.SERVER_PASSWORD }}" scp -o StrictHostKeyChecking=no \
+            ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }}:~/backup.sql.gz \
+            ./backup.sql.gz
+
+      - name: Upload Backup as Artifact (Keep 7 Days)
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: backup.sql.gz
+          retention-days: 7
+
+      - name: Send Feishu Notification
+        run: |
+          curl -X POST "${{ secrets.FEISHU_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"msg_type\": \"text\",
+              \"content\": {
+                \"text\": \"数据库 s1 备份完成\n\n时间：$(date '+%Y-%m-%d %H:%M:%S')\n保存方式：GitHub Artifacts\n保留天数：7 天\"
+              }
+            }"
