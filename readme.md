@@ -47,6 +47,8 @@ FEISHU_WEBHOOK_URL   # 飞书机器人 webhook 地址
 
 ### GitHub Actions 自动备份
 
+> **当前状态：已关闭（2026-11-04）**。工作流文件已改名为 `.github/workflows/db_backup.yml.disabled`，GitHub 不再识别，定时、推送、PR、手动触发全部停止。恢复办法见文末「如何重新开启备份」。
+
 项目配置了 GitHub Actions 工作流，会在以下情况自动运行：
 
 - ⏰ **定时执行**: 每天北京时间 03:00（UTC 19:00）自动备份
@@ -166,3 +168,15 @@ MIT License
 ---
 
 **注意**: 请确保在生产环境中使用前充分测试备份流程。
+
+## 🔛 如何重新开启备份
+
+工作流只是被改名停用，配置和 Secrets 都原样保留，改回文件名即可恢复：
+
+```bash
+git mv .github/workflows/db_backup.yml.disabled .github/workflows/db_backup.yml
+git commit -m "chore: 重新开启数据库自动备份"
+git push origin master
+```
+
+推送后 GitHub 会重新注册该工作流，按文件里的 cron（当前为 `0 19 * * *`，即北京时间 03:00）继续定时备份。
