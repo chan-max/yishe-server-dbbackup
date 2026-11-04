@@ -2,7 +2,7 @@ name: 数据库自动备份（Artifacts）
 
 on:
   schedule:
-    - cron: '0 6 * * *'
+    - cron: '0 19 * * *'  # UTC 19:00 = 北京时间次日 03:00
   workflow_dispatch:
   push:
     branches: [ main, master, develop ]
@@ -54,6 +54,6 @@ jobs:
             -d "{
               \"msg_type\": \"text\",
               \"content\": {
-                \"text\": \"数据库 s1 备份完成\n\n时间：$(date '+%Y-%m-%d %H:%M:%S')\n保存方式：GitHub Artifacts\n保留天数：7 天\"
+                \"text\": \"数据库 s1 备份完成\n\n时间（北京时间）：$(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')\n保存方式：GitHub Artifacts\n保留天数：7 天\"
               }
             }"
